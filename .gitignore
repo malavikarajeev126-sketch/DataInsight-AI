@@ -3,12 +3,9 @@
 .env.*
 !.env.example
 
-# User uploaded data / datasets
-data/
-*.csv
-*.xlsx
-*.xls
-*.json
+# Uploaded datasets
+data/uploads/*
+!data/uploads/.gitkeep
 
 # Python virtual environments
 venv/
