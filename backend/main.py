@@ -1,11 +1,13 @@
 # ====================================
 # DataInsight-AI Backend - Main API
 # ====================================
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pathlib import Path
 import shutil
 
-from backend.data_loader import load_dataset, get_dataset_info
+from backend.data_loader import load_dataset
+from backend.analysis import analyze_dataset
 
 
 # Create the FastAPI application
@@ -33,7 +35,8 @@ async def upload_dataset(file: UploadFile = File(...)):
     Upload a CSV, Excel, or JSON dataset.
 
     The uploaded file is saved to data/uploads/,
-    loaded using the data loader, and basic metadata is returned.
+    loaded using the data loader, analyzed, and the
+    analysis results are returned.
     """
 
     # Supported file extensions
@@ -60,18 +63,14 @@ async def upload_dataset(file: UploadFile = File(...)):
         # Load the saved dataset
         df = load_dataset(str(file_path))
 
-        # Generate dataset metadata
-        info = get_dataset_info(df)
+        # Perform complete dataset analysis
+        analysis = analyze_dataset(df)
 
-        # Return success response
+        # Return success response with analysis results
         return {
-            "message": "Dataset uploaded successfully!",
+            "message": "Dataset uploaded and analyzed successfully!",
             "filename": file.filename,
-            "rows": info["rows"],
-            "columns": info["columns"],
-            "column_names": info["column_names"],
-            "data_types": info["data_types"],
-            "missing_values": info["missing_values"]
+            "analysis": analysis
         }
 
     except Exception as e:

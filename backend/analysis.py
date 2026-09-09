@@ -1,9 +1,39 @@
+import pandas as pd
+
 """
 Dataset analysis module for DataInsight-AI.
 
 This module contains functions used to analyze
 uploaded datasets and generate useful insights.
 """
+
+
+def clean_for_json(data):
+    """
+    Convert NaN and infinite float values to None
+    so the data can be safely serialized as JSON.
+
+    Args:
+        data: Dictionary, list, or value to clean.
+
+    Returns:
+        JSON-safe version of the input data.
+    """
+
+    if isinstance(data, dict):
+        return {
+            key: clean_for_json(value)
+            for key, value in data.items()
+        }
+
+    if isinstance(data, list):
+        return [clean_for_json(value) for value in data]
+
+    if isinstance(data, float):
+        if pd.isna(data) or data in (float("inf"), float("-inf")):
+            return None
+
+    return data
 
 
 def get_missing_values(df):
@@ -96,6 +126,8 @@ def get_categorical_statistics(df):
         }
 
     return statistics
+
+
 def get_correlation_matrix(df):
     """
     Calculate the Pearson correlation matrix for numerical columns.
@@ -122,21 +154,71 @@ def get_correlation_matrix(df):
     # Convert the DataFrame to a normal dictionary
     return correlation.to_dict()
 
-def analyze_dataset(df):
+
+def get_outliers(df):
     """
-    Perform basic profiling of a pandas DataFrame.
+    Detect outliers in numerical columns using the IQR method.
 
     Args:
         df: The pandas DataFrame to analyze.
 
     Returns:
-        A dictionary containing basic dataset information,
-        missing-value counts, and duplicate-row count.
+        A dictionary containing outlier information for each
+        numerical column.
     """
 
-    return {
-        "rows": df.shape[0],
-        "columns": df.shape[1],
+    numerical_df = df.select_dtypes(include="number")
+
+    outliers = {}
+
+    for column in numerical_df.columns:
+        series = numerical_df[column].dropna()
+
+        if len(series) < 4:
+            outliers[column] = {
+                "count": 0,
+                "values": [],
+            }
+            continue
+
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
+
+        iqr = q3 - q1
+
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+
+        outlier_values = series[
+            (series < lower_bound) |
+            (series > upper_bound)
+        ].tolist()
+
+        outliers[column] = {
+            "count": len(outlier_values),
+            "values": outlier_values,
+        }
+
+    return outliers
+
+
+def analyze_dataset(df):
+    """
+    Perform complete analysis of a pandas DataFrame.
+
+    Args:
+        df: The pandas DataFrame to analyze.
+
+    Returns:
+        A dictionary containing dataset profiling,
+        missing values, duplicates, unique values,
+        numerical statistics, categorical statistics,
+        correlation analysis, and outlier detection.
+    """
+
+    result = {
+        "rows": int(df.shape[0]),
+        "columns": int(df.shape[1]),
         "column_names": list(df.columns),
         "data_types": df.dtypes.astype(str).to_dict(),
         "missing_values": get_missing_values(df),
@@ -144,5 +226,10 @@ def analyze_dataset(df):
         "unique_values": get_unique_counts(df),
         "numeric_statistics": get_numeric_statistics(df),
         "categorical_statistics": get_categorical_statistics(df),
-       "correlation": get_correlation_matrix(df),
+        "correlation": get_correlation_matrix(df),
+        "outliers": get_outliers(df),
     }
+
+    # Convert NaN and infinite values to None
+    # so the result can be safely returned as JSON.
+    return clean_for_json(result)
