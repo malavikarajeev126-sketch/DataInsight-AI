@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 
 
@@ -54,6 +55,7 @@ def create_bar_chart(df, category_column, value_column):
     )
 
     return fig
+
 def create_line_chart(df, x_column, y_column):
     import plotly.express as px
 
@@ -65,3 +67,44 @@ def create_line_chart(df, x_column, y_column):
     )
 
     return fig
+
+def create_scatter_chart(df, x_column, y_column):
+    import plotly.express as px
+
+    fig = px.scatter(
+        df,
+        x=x_column,
+        y=y_column,
+        title=f"{y_column} vs {x_column}"
+    )
+
+    return fig
+
+def create_box_chart(df, column):
+    import plotly.express as px
+
+    fig = px.box(
+        df,
+        y=column,
+        title=f"Distribution of {column}"
+    )
+
+    return fig
+
+def create_correlation_heatmap(df):
+    import plotly.express as px
+
+    numerical_df = df.select_dtypes(include="number")
+
+    correlation = numerical_df.corr()
+
+    fig = px.imshow(
+        correlation,
+        text_auto=True,
+        title="Correlation Heatmap",
+        aspect="auto"
+    )
+
+    return fig 
+def figure_to_json(fig):
+    return json.loads(fig.to_json())
